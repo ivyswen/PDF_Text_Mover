@@ -1,0 +1,21 @@
+# 编译输出及临时缓冲目录
+bin/
+dcu/
+Win32/
+Win64/
+__history/
+
+# Delphi IDE 缓存和临时文件
+*.~*
+*.local
+*.identcache
+*.tvsconfig
+*.stat
+*.dcu
+
+# 本地运行时生成的配置文件
+*.ini
+
+# 样本数据与输出的 PDF 临时文件
+sample-files/
+*.pdf
