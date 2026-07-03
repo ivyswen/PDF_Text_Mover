@@ -25,9 +25,60 @@ object frmMoverMain: TfrmMoverMain
     TabOrder = 0
     object tshMover: TTabSheet
       Caption = 'tshMover'
-      object grpFileConfig: TGroupBox
+      object grpPresetConfig: TGroupBox
         Left = 20
         Top = 20
+        Width = 1860
+        Height = 110
+        Caption = ' 预设配置管理 '
+        TabOrder = 0
+        object lblPreset: TLabel
+          Left = 30
+          Top = 42
+          Width = 120
+          Height = 38
+          Caption = '选择预设:'
+        end
+        object cmbPresets: TComboBox
+          Left = 240
+          Top = 36
+          Width = 430
+          Height = 46
+          Style = csDropDownList
+          TabOrder = 0
+          OnChange = cmbPresetsChange
+        end
+        object btnQuickSavePreset: TButton
+          Left = 700
+          Top = 35
+          Width = 350
+          Height = 48
+          Caption = '保存到当前预设'
+          TabOrder = 1
+          OnClick = btnQuickSavePresetClick
+        end
+        object btnSavePreset: TButton
+          Left = 1070
+          Top = 35
+          Width = 350
+          Height = 48
+          Caption = '保存当前配置...'
+          TabOrder = 2
+          OnClick = btnSavePresetClick
+        end
+        object btnDeletePreset: TButton
+          Left = 1440
+          Top = 35
+          Width = 350
+          Height = 48
+          Caption = '删除选中预设'
+          TabOrder = 3
+          OnClick = btnDeletePresetClick
+        end
+      end
+      object grpFileConfig: TGroupBox
+        Left = 20
+        Top = 140
         Width = 1860
         Height = 220
         Margins.Left = 6
@@ -35,7 +86,7 @@ object frmMoverMain: TfrmMoverMain
         Margins.Right = 6
         Margins.Bottom = 6
         Caption = 'grpFileConfig'
-        TabOrder = 0
+        TabOrder = 1
         object lblSrcFile: TLabel
           Left = 30
           Top = 60
@@ -110,7 +161,7 @@ object frmMoverMain: TfrmMoverMain
       end
       object grpCoordsConfig: TGroupBox
         Left = 20
-        Top = 260
+        Top = 380
         Width = 1860
         Height = 560
         Margins.Left = 6
@@ -118,7 +169,7 @@ object frmMoverMain: TfrmMoverMain
         Margins.Right = 6
         Margins.Bottom = 6
         Caption = 'grpCoordsConfig'
-        TabOrder = 1
+        TabOrder = 2
         object lblMode: TLabel
           Left = 30
           Top = 60
@@ -475,7 +526,7 @@ object frmMoverMain: TfrmMoverMain
       end
       object grpStyleConfig: TGroupBox
         Left = 20
-        Top = 840
+        Top = 960
         Width = 1860
         Height = 139
         Margins.Left = 6
@@ -483,7 +534,7 @@ object frmMoverMain: TfrmMoverMain
         Margins.Right = 6
         Margins.Bottom = 6
         Caption = 'grpStyleConfig'
-        TabOrder = 2
+        TabOrder = 3
         object lblFont: TLabel
           Left = 30
           Top = 60
@@ -608,7 +659,7 @@ object frmMoverMain: TfrmMoverMain
       end
       object btnStart: TButton
         Left = 20
-        Top = 1003
+        Top = 1120
         Width = 1860
         Height = 90
         Margins.Left = 6
@@ -622,12 +673,12 @@ object frmMoverMain: TfrmMoverMain
         Font.Name = 'Segoe UI'
         Font.Style = [fsBold]
         ParentFont = False
-        TabOrder = 3
+        TabOrder = 4
         OnClick = btnStartClick
       end
       object pnlProgress: TPanel
         Left = 20
-        Top = 1112
+        Top = 1230
         Width = 1860
         Height = 45
         Margins.Left = 6
@@ -635,7 +686,7 @@ object frmMoverMain: TfrmMoverMain
         Margins.Right = 6
         Margins.Bottom = 6
         BevelOuter = bvNone
-        TabOrder = 4
+        TabOrder = 5
         object pbProgress: TProgressBar
           Left = 0
           Top = 0
@@ -652,9 +703,9 @@ object frmMoverMain: TfrmMoverMain
       end
       object memLog: TMemo
         Left = 20
-        Top = 1173
+        Top = 1295
         Width = 1860
-        Height = 507
+        Height = 415
         Margins.Left = 6
         Margins.Top = 6
         Margins.Right = 6
@@ -668,7 +719,7 @@ object frmMoverMain: TfrmMoverMain
         ParentFont = False
         ReadOnly = True
         ScrollBars = ssVertical
-        TabOrder = 5
+        TabOrder = 6
       end
     end
     object tshHelp: TTabSheet

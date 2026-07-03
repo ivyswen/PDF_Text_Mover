@@ -1,4 +1,4 @@
-﻿unit frmMoverMain;
+unit frmMoverMain;
 
 interface
 
@@ -20,10 +20,17 @@ uses
   System.Generics.Collections,
   System.IniFiles,
   Winapi.ShellAPI,
+  System.UITypes,
   uPDFTextMover;
 
 type
   TfrmMoverMain = class(TForm)
+    grpPresetConfig: TGroupBox;
+    lblPreset: TLabel;
+    cmbPresets: TComboBox;
+    btnSavePreset: TButton;
+    btnQuickSavePreset: TButton;
+    btnDeletePreset: TButton;
     grpFileConfig: TGroupBox;
     lblSrcFile: TLabel;
     lblOutputDir: TLabel;
@@ -86,9 +93,14 @@ type
     procedure btnStartClick(Sender: TObject);
     procedure rbDestModeClick(Sender: TObject);
     procedure edtCoordsChange(Sender: TObject);
+    procedure cmbPresetsChange(Sender: TObject);
+    procedure btnSavePresetClick(Sender: TObject);
+    procedure btnQuickSavePresetClick(Sender: TObject);
+    procedure btnDeletePresetClick(Sender: TObject);
   private
     FSelectedFiles: TStringList;
     FProcessing: Boolean;
+    FLoadingSettings: Boolean;
     
     // UI input snapshots for safe thread access
     FSnapFiles: TArray<string>;
@@ -105,6 +117,7 @@ type
     FCurrentDestAbsolute: Boolean;
     procedure ConvertSourceCoords(ToAbsolute: Boolean);
     procedure ConvertDestCoords(ToAbsolute: Boolean);
+    function GetAppVersion: string;
 
     procedure SetupChineseCaptions;
     procedure UpdateControlsState;
@@ -115,6 +128,9 @@ type
     // Load and Save UI Settings
     procedure LoadUISettings;
     procedure SaveUISettings;
+    procedure LoadPresetList;
+    procedure LoadPreset(const PresetName: string);
+    procedure SavePreset(const PresetName: string);
     
     // Windows Drag & Drop support
     procedure WMDropFiles(var Msg: TWMDropFiles); message WM_DROPFILES;
@@ -138,14 +154,21 @@ procedure TfrmMoverMain.FormCreate(Sender: TObject);
 begin
   FSelectedFiles := TStringList.Create;
   FProcessing := False;
+  FLoadingSettings := False;
   
   // Accept drag & drop files
   DragAcceptFiles(Self.Handle, True);
   
   SetupChineseCaptions;
   
-  // Load settings from INI, which sets values and formats Edit boxes
-  LoadUISettings;
+  // Load preset list
+  LoadPresetList;
+  
+  // Load preset if one is active, otherwise load general settings
+  if cmbPresets.ItemIndex >= 0 then
+    LoadPreset(cmbPresets.Items[cmbPresets.ItemIndex])
+  else
+    LoadUISettings;
   
   UpdateControlsState;
   
@@ -185,6 +208,12 @@ end;
 
 procedure TfrmMoverMain.SetupChineseCaptions;
 begin
+  grpPresetConfig.Caption := ' 预设配置管理 ';
+  lblPreset.Caption := '选择预设:';
+  btnQuickSavePreset.Caption := '保存到当前预设';
+  btnSavePreset.Caption := '另存为新预设...';
+  btnDeletePreset.Caption := '删除选中预设';
+
   tshMover.Caption := '参数配置与处理';
   tshHelp.Caption := '软件使用说明';
 
@@ -221,7 +250,7 @@ begin
   memHelp.Lines.Add('');
   memHelp.Lines.Add('======================================================================');
 
-  Self.Caption := 'PDF 标签文本区域迁移工具';
+  Self.Caption := 'PDF 标签文本区域迁移工具 v' + GetAppVersion;
   
   grpFileConfig.Caption := ' 文件与目录配置 ';
   lblSrcFile.Caption := '待处理 PDF:';
@@ -389,8 +418,40 @@ begin
   edtTy.Text := Format('%.2f', [udTy.Position / 100.0]);
 end;
 
+function TfrmMoverMain.GetAppVersion: string;
+var
+  VerInfoSize, VerValueSize: DWORD;
+  Dummy: DWORD;
+  VerInfoBuffer: Pointer;
+  VerValue: PVSFixedFileInfo;
+  V1, V2, V3, V4: Word;
+begin
+  Result := '1.0.0.0';
+  VerInfoSize := GetFileVersionInfoSize(PChar(ParamStr(0)), Dummy);
+  if VerInfoSize > 0 then
+  begin
+    GetMem(VerInfoBuffer, VerInfoSize);
+    try
+      if GetFileVersionInfo(PChar(ParamStr(0)), 0, VerInfoSize, VerInfoBuffer) then
+      begin
+        if VerQueryValue(VerInfoBuffer, '\', Pointer(VerValue), VerValueSize) then
+        begin
+          V1 := HiWord(VerValue^.dwFileVersionMS);
+          V2 := LoWord(VerValue^.dwFileVersionMS);
+          V3 := HiWord(VerValue^.dwFileVersionLS);
+          V4 := LoWord(VerValue^.dwFileVersionLS);
+          Result := Format('%d.%d.%d.%d', [V1, V2, V3, V4]);
+        end;
+      end;
+    finally
+      FreeMem(VerInfoBuffer);
+    end;
+  end;
+end;
+
 procedure TfrmMoverMain.rbModeClick(Sender: TObject);
 begin
+  if FLoadingSettings then Exit;
   if not rbSmartMode.Checked then
   begin
     if rbAbsoluteMode.Checked <> FCurrentSrcAbsolute then
@@ -404,6 +465,7 @@ end;
 
 procedure TfrmMoverMain.rbDestModeClick(Sender: TObject);
 begin
+  if FLoadingSettings then Exit;
   if rbDestAbsolute.Checked <> FCurrentDestAbsolute then
   begin
     ConvertDestCoords(rbDestAbsolute.Checked);
@@ -446,7 +508,7 @@ var
   Val: Double;
   NewPos: Integer;
 begin
-  if FProcessing then Exit;
+  if FProcessing or FLoadingSettings then Exit;
 
   if Sender is TEdit then
   begin
@@ -837,8 +899,308 @@ begin
     if rbDestAbsolute.Checked then
       LDestMode := 1;
     Ini.WriteInteger('Settings', 'DestMode', LDestMode);
+    
+    if cmbPresets.ItemIndex >= 0 then
+      Ini.WriteString('Presets', 'LastPreset', cmbPresets.Items[cmbPresets.ItemIndex])
+    else
+      Ini.WriteString('Presets', 'LastPreset', '');
   finally
     Ini.Free;
+  end;
+end;
+
+procedure TfrmMoverMain.LoadPresetList;
+var
+  Ini: TIniFile;
+  IniPath: string;
+  ListStr: string;
+  Presets: TStringList;
+  I: Integer;
+  LastPreset: string;
+  OldIndex: Integer;
+begin
+  IniPath := TPath.Combine(ExtractFilePath(Application.ExeName), 'PDFTextMover.ini');
+  Ini := TIniFile.Create(IniPath);
+  Presets := TStringList.Create;
+  try
+    ListStr := Ini.ReadString('Presets', 'List', '');
+    Presets.CommaText := ListStr;
+    
+    cmbPresets.Items.BeginUpdate;
+    try
+      cmbPresets.Items.Clear;
+      for I := 0 to Presets.Count - 1 do
+        cmbPresets.Items.Add(Presets[I]);
+    finally
+      cmbPresets.Items.EndUpdate;
+    end;
+    
+    LastPreset := Ini.ReadString('Presets', 'LastPreset', '');
+    if LastPreset <> '' then
+    begin
+      OldIndex := cmbPresets.Items.IndexOf(LastPreset);
+      if OldIndex >= 0 then
+        cmbPresets.ItemIndex := OldIndex;
+    end;
+  finally
+    Presets.Free;
+    Ini.Free;
+  end;
+end;
+
+procedure TfrmMoverMain.LoadPreset(const PresetName: string);
+var
+  Ini: TIniFile;
+  IniPath: string;
+  Section: string;
+  ModeIndex: Integer;
+  LFontSize: Integer;
+  LLineHeight: Integer;
+  LDestMode: Integer;
+begin
+  if PresetName = '' then Exit;
+  
+  IniPath := TPath.Combine(ExtractFilePath(Application.ExeName), 'PDFTextMover.ini');
+  Ini := TIniFile.Create(IniPath);
+  try
+    Section := 'Preset_' + PresetName;
+    if not Ini.SectionExists(Section) then
+    begin
+      AppendLog('【错误】预设不存在: ' + PresetName);
+      Exit;
+    end;
+    
+    FLoadingSettings := True;
+    try
+      edtOutputDir.Text := Ini.ReadString(Section, 'OutputDir', edtOutputDir.Text);
+      
+      ModeIndex := Ini.ReadInteger(Section, 'Mode', 0);
+      case ModeIndex of
+        0: rbSmartMode.Checked := True;
+        1: rbPercentMode.Checked := True;
+        2: rbAbsoluteMode.Checked := True;
+      end;
+      
+      udX1.Position := Ini.ReadInteger(Section, 'X1', 3500);
+      udY1.Position := Ini.ReadInteger(Section, 'Y1', 8000);
+      udX2.Position := Ini.ReadInteger(Section, 'X2', 9500);
+      udY2.Position := Ini.ReadInteger(Section, 'Y2', 9800);
+      udTx.Position := Ini.ReadInteger(Section, 'Tx', 4400);
+      udTy.Position := Ini.ReadInteger(Section, 'Ty', 1100);
+      
+      LFontSize := Ini.ReadInteger(Section, 'FontSize', 8);
+      if LFontSize >= 100 then LFontSize := LFontSize div 100;
+      udFontSize.Position := LFontSize;
+      
+      LLineHeight := Ini.ReadInteger(Section, 'LineHeight', 18);
+      if LLineHeight >= 100 then LLineHeight := LLineHeight div 100;
+      udLineHeight.Position := LLineHeight;
+      
+      chkEraseSource.Checked := Ini.ReadBool(Section, 'EraseSource', True);
+      cmbFonts.ItemIndex := Ini.ReadInteger(Section, 'FontIndex', 0);
+      
+      LDestMode := Ini.ReadInteger(Section, 'DestMode', 0);
+      if LDestMode = 1 then
+        rbDestAbsolute.Checked := True
+      else
+        rbDestPercent.Checked := True;
+        
+      // Update Edit texts manually as FLoadingSettings prevents automatic changes
+      edtX1.Text := Format('%.2f', [udX1.Position / 100.0]);
+      edtY1.Text := Format('%.2f', [udY1.Position / 100.0]);
+      edtX2.Text := Format('%.2f', [udX2.Position / 100.0]);
+      edtY2.Text := Format('%.2f', [udY2.Position / 100.0]);
+      edtTx.Text := Format('%.2f', [udTx.Position / 100.0]);
+      edtTy.Text := Format('%.2f', [udTy.Position / 100.0]);
+      edtFontSize.Text := IntToStr(udFontSize.Position);
+      edtLineHeight.Text := IntToStr(udLineHeight.Position);
+      
+      FCurrentSrcAbsolute := rbAbsoluteMode.Checked;
+      FCurrentDestAbsolute := rbDestAbsolute.Checked;
+      
+      UpdateControlsState;
+      AppendLog('成功加载配置预设: ' + PresetName);
+    finally
+      FLoadingSettings := False;
+    end;
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure TfrmMoverMain.SavePreset(const PresetName: string);
+var
+  Ini: TIniFile;
+  IniPath: string;
+  Section: string;
+  ModeIndex: Integer;
+  LDestMode: Integer;
+  ListStr: string;
+  Presets: TStringList;
+begin
+  if PresetName = '' then Exit;
+  
+  IniPath := TPath.Combine(ExtractFilePath(Application.ExeName), 'PDFTextMover.ini');
+  Ini := TIniFile.Create(IniPath);
+  Presets := TStringList.Create;
+  try
+    Section := 'Preset_' + PresetName;
+    
+    // Save settings
+    Ini.WriteString(Section, 'OutputDir', edtOutputDir.Text);
+    
+    if rbSmartMode.Checked then
+      ModeIndex := 0
+    else if rbPercentMode.Checked then
+      ModeIndex := 1
+    else
+      ModeIndex := 2;
+    Ini.WriteInteger(Section, 'Mode', ModeIndex);
+    
+    Ini.WriteInteger(Section, 'X1', udX1.Position);
+    Ini.WriteInteger(Section, 'Y1', udY1.Position);
+    Ini.WriteInteger(Section, 'X2', udX2.Position);
+    Ini.WriteInteger(Section, 'Y2', udY2.Position);
+    Ini.WriteInteger(Section, 'Tx', udTx.Position);
+    Ini.WriteInteger(Section, 'Ty', udTy.Position);
+    
+    Ini.WriteInteger(Section, 'FontSize', udFontSize.Position);
+    Ini.WriteInteger(Section, 'LineHeight', udLineHeight.Position);
+    Ini.WriteBool(Section, 'EraseSource', chkEraseSource.Checked);
+    Ini.WriteInteger(Section, 'FontIndex', cmbFonts.ItemIndex);
+    
+    if rbDestAbsolute.Checked then
+      LDestMode := 1
+    else
+      LDestMode := 0;
+    Ini.WriteInteger(Section, 'DestMode', LDestMode);
+    
+    // Update Preset List
+    ListStr := Ini.ReadString('Presets', 'List', '');
+    Presets.CommaText := ListStr;
+    if Presets.IndexOf(PresetName) < 0 then
+    begin
+      Presets.Add(PresetName);
+      Ini.WriteString('Presets', 'List', Presets.CommaText);
+    end;
+    
+    Ini.WriteString('Presets', 'LastPreset', PresetName);
+    AppendLog('已保存配置预设: ' + PresetName);
+  finally
+    Presets.Free;
+    Ini.Free;
+  end;
+end;
+
+procedure TfrmMoverMain.cmbPresetsChange(Sender: TObject);
+begin
+  if cmbPresets.ItemIndex >= 0 then
+  begin
+    LoadPreset(cmbPresets.Items[cmbPresets.ItemIndex]);
+  end;
+end;
+
+procedure TfrmMoverMain.btnSavePresetClick(Sender: TObject);
+var
+  PresetName: string;
+  OldIndex: Integer;
+begin
+  PresetName := '';
+  if InputQuery('保存预设', '请输入预设名称:', PresetName) then
+  begin
+    PresetName := Trim(PresetName);
+    if PresetName = '' then
+    begin
+      ShowMessage('预设名称不能为空！');
+      Exit;
+    end;
+    
+    if (Pos(',', PresetName) > 0) or (Pos(';', PresetName) > 0) then
+    begin
+      ShowMessage('预设名称不能包含逗号或分号等分隔符！');
+      Exit;
+    end;
+    
+    SavePreset(PresetName);
+    
+    // Reload preset list and select the saved one
+    LoadPresetList;
+    OldIndex := cmbPresets.Items.IndexOf(PresetName);
+    if OldIndex >= 0 then
+      cmbPresets.ItemIndex := OldIndex;
+  end;
+end;
+
+procedure TfrmMoverMain.btnQuickSavePresetClick(Sender: TObject);
+var
+  PresetName: string;
+begin
+  if cmbPresets.ItemIndex < 0 then
+  begin
+    ShowMessage('当前未选择任何预设，请使用“另存为新预设...”创建新预设！');
+    Exit;
+  end;
+  
+  PresetName := cmbPresets.Items[cmbPresets.ItemIndex];
+  SavePreset(PresetName);
+  ShowMessage(Format('已成功更新当前预设 "%s" 的配置！', [PresetName]));
+end;
+
+procedure TfrmMoverMain.btnDeletePresetClick(Sender: TObject);
+var
+  PresetName: string;
+  Ini: TIniFile;
+  IniPath: string;
+  ListStr: string;
+  Presets: TStringList;
+  Idx: Integer;
+begin
+  if cmbPresets.ItemIndex < 0 then
+  begin
+    ShowMessage('请先选择一个预设进行删除！');
+    Exit;
+  end;
+  
+  PresetName := cmbPresets.Items[cmbPresets.ItemIndex];
+  if MessageDlg(Format('确定要删除预设 "%s" 吗？', [PresetName]), mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+  begin
+    IniPath := TPath.Combine(ExtractFilePath(Application.ExeName), 'PDFTextMover.ini');
+    Ini := TIniFile.Create(IniPath);
+    Presets := TStringList.Create;
+    try
+      // Delete the preset section
+      Ini.EraseSection('Preset_' + PresetName);
+      
+      // Update Preset List
+      ListStr := Ini.ReadString('Presets', 'List', '');
+      Presets.CommaText := ListStr;
+      Idx := Presets.IndexOf(PresetName);
+      if Idx >= 0 then
+      begin
+        Presets.Delete(Idx);
+        Ini.WriteString('Presets', 'List', Presets.CommaText);
+      end;
+      
+      // Clear LastPreset if it was the deleted one
+      if SameText(Ini.ReadString('Presets', 'LastPreset', ''), PresetName) then
+        Ini.WriteString('Presets', 'LastPreset', '');
+        
+      AppendLog('已删除配置预设: ' + PresetName);
+    finally
+      Presets.Free;
+      Ini.Free;
+    end;
+    
+    LoadPresetList;
+    if cmbPresets.Items.Count > 0 then
+    begin
+      cmbPresets.ItemIndex := 0;
+      cmbPresetsChange(cmbPresets);
+    end
+    else
+    begin
+      cmbPresets.ItemIndex := -1;
+    end;
   end;
 end;
 
