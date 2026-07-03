@@ -1,4 +1,4 @@
-﻿object frmMoverMain: TfrmMoverMain
+object frmMoverMain: TfrmMoverMain
   Left = 0
   Top = 0
   BorderIcons = [biSystemMenu, biMinimize]
@@ -72,7 +72,7 @@
         end
         object btnSelectFile: TButton
           Left = 1590
-          Top = 49
+          Top = 54
           Width = 260
           Height = 46
           Margins.Left = 6
@@ -96,7 +96,7 @@
         end
         object btnSelectOutputDir: TButton
           Left = 1590
-          Top = 130
+          Top = 133
           Width = 260
           Height = 48
           Margins.Left = 6
@@ -150,7 +150,7 @@
         object lblDestRegionTitle: TLabel
           Left = 30
           Top = 360
-          Width = 310
+          Width = 210
           Height = 32
           Margins.Left = 6
           Margins.Top = 6
@@ -298,10 +298,10 @@
           Margins.Right = 6
           Margins.Bottom = 6
           Max = 10000
+          Increment = 100
           Position = 3500
           TabOrder = 4
           OnClick = udClick
-          Increment = 100
         end
         object edtY1: TEdit
           Left = 1180
@@ -326,10 +326,10 @@
           Margins.Right = 6
           Margins.Bottom = 6
           Max = 10000
+          Increment = 100
           Position = 8000
           TabOrder = 6
           OnClick = udClick
-          Increment = 100
         end
         object edtX2: TEdit
           Left = 240
@@ -354,10 +354,10 @@
           Margins.Right = 6
           Margins.Bottom = 6
           Max = 10000
+          Increment = 100
           Position = 9500
           TabOrder = 8
           OnClick = udClick
-          Increment = 100
         end
         object edtY2: TEdit
           Left = 1180
@@ -382,10 +382,10 @@
           Margins.Right = 6
           Margins.Bottom = 6
           Max = 10000
+          Increment = 100
           Position = 9800
           TabOrder = 10
           OnClick = udClick
-          Increment = 100
         end
         object edtTx: TEdit
           Left = 240
@@ -410,10 +410,10 @@
           Margins.Right = 6
           Margins.Bottom = 6
           Max = 10000
+          Increment = 100
           Position = 4400
           TabOrder = 12
           OnClick = udClick
-          Increment = 100
         end
         object edtTy: TEdit
           Left = 1180
@@ -438,10 +438,10 @@
           Margins.Right = 6
           Margins.Bottom = 6
           Max = 10000
+          Increment = 100
           Position = 10000
           TabOrder = 14
           OnClick = udClick
-          Increment = 100
         end
         object pnlDestMode: TPanel
           Left = 755
@@ -477,7 +477,7 @@
         Left = 20
         Top = 840
         Width = 1860
-        Height = 160
+        Height = 139
         Margins.Left = 6
         Margins.Top = 6
         Margins.Right = 6
@@ -506,6 +506,17 @@
           Margins.Bottom = 6
           Caption = 'lblFontSize'
         end
+        object lblLineHeight: TLabel
+          Left = 1101
+          Top = 58
+          Width = 164
+          Height = 38
+          Margins.Left = 6
+          Margins.Top = 6
+          Margins.Right = 6
+          Margins.Bottom = 6
+          Caption = 'lblLineHeight'
+        end
         object cmbFonts: TComboBox
           Left = 240
           Top = 54
@@ -518,14 +529,14 @@
           Style = csDropDownList
           ItemIndex = 0
           TabOrder = 0
-          Text = 'Helvetica (无衬线常用体)'
+          Text = 'Helvetica ('#26080#34924#32447#24120#29992#20307')'
           Items.Strings = (
-            'Helvetica (无衬线常用体)'
-            'Times-Roman (衬线报刊体)'
-            'Courier (等宽打字机体)')
+            'Helvetica ('#26080#34924#32447#24120#29992#20307')'
+            'Times-Roman ('#34924#32447#25253#21002#20307')'
+            'Courier ('#31561#23485#25171#23383#26426#20307')')
         end
         object edtFontSize: TEdit
-          Left = 900
+          Left = 839
           Top = 54
           Width = 140
           Height = 46
@@ -537,7 +548,7 @@
           Text = '8'
         end
         object udFontSize: TUpDown
-          Left = 1040
+          Left = 979
           Top = 54
           Width = 40
           Height = 46
@@ -553,7 +564,7 @@
           OnClick = udClick
         end
         object chkEraseSource: TCheckBox
-          Left = 1140
+          Left = 1491
           Top = 60
           Width = 340
           Height = 40
@@ -566,22 +577,38 @@
           State = cbChecked
           TabOrder = 3
         end
-        object chkAvoidOverlap: TCheckBox
-          Left = 1500
-          Top = 60
-          Width = 360
-          Height = 40
+        object edtLineHeight: TEdit
+          Left = 1265
+          Top = 54
+          Width = 140
+          Height = 46
           Margins.Left = 6
           Margins.Top = 6
           Margins.Right = 6
           Margins.Bottom = 6
-          Caption = 'chkAvoidOverlap'
           TabOrder = 4
+          Text = '18'
+        end
+        object udLineHeight: TUpDown
+          Left = 1404
+          Top = 54
+          Width = 40
+          Height = 46
+          Margins.Left = 6
+          Margins.Top = 6
+          Margins.Right = 6
+          Margins.Bottom = 6
+          Associate = edtLineHeight
+          Min = 5
+          Max = 72
+          Position = 18
+          TabOrder = 5
+          OnClick = udClick
         end
       end
       object btnStart: TButton
         Left = 20
-        Top = 1020
+        Top = 1003
         Width = 1860
         Height = 90
         Margins.Left = 6
@@ -600,9 +627,9 @@
       end
       object pnlProgress: TPanel
         Left = 20
-        Top = 1130
+        Top = 1112
         Width = 1860
-        Height = 60
+        Height = 45
         Margins.Left = 6
         Margins.Top = 6
         Margins.Right = 6
@@ -613,20 +640,21 @@
           Left = 0
           Top = 0
           Width = 1860
-          Height = 60
+          Height = 45
           Margins.Left = 6
           Margins.Top = 6
           Margins.Right = 6
           Margins.Bottom = 6
           Align = alClient
           TabOrder = 0
+          ExplicitHeight = 50
         end
       end
       object memLog: TMemo
         Left = 20
-        Top = 1210
+        Top = 1173
         Width = 1860
-        Height = 470
+        Height = 507
         Margins.Left = 6
         Margins.Top = 6
         Margins.Right = 6

@@ -59,11 +59,13 @@ type
     grpStyleConfig: TGroupBox;
     lblFont: TLabel;
     lblFontSize: TLabel;
+    lblLineHeight: TLabel;
     cmbFonts: TComboBox;
     edtFontSize: TEdit;
     udFontSize: TUpDown;
+    edtLineHeight: TEdit;
+    udLineHeight: TUpDown;
     chkEraseSource: TCheckBox;
-    chkAvoidOverlap: TCheckBox;
     btnStart: TButton;
     pnlProgress: TPanel;
     pbProgress: TProgressBar;
@@ -94,6 +96,7 @@ type
     FSnapSortX1, FSnapSortY1, FSnapSortX2, FSnapSortY2, FSnapDestTx, FSnapDestTy: Single;
     FSnapDestAbsolute: Boolean;
     FSnapFontSize: Single;
+    FSnapLineHeight: Single;
     FSnapErase: Boolean;
     FSnapAvoid: Boolean;
     FSnapMode: TMoveMode;
@@ -240,17 +243,15 @@ begin
   grpStyleConfig.Caption := ' 重建文本样式设置 ';
   lblFont.Caption := '字体库:';
   lblFontSize.Caption := '字号 (px):';
-  chkEraseSource.Caption := '擦除原始区域文本';
-  chkAvoidOverlap.Caption := '自适应避让重叠文字';
-  
+  lblLineHeight.Caption := '行距 (pt):';
   btnStart.Caption := '开始批量迁移文本';
-  
-  // Initialize fonts list
   cmbFonts.Clear;
   cmbFonts.Items.Add('Helvetica (无衬线常用体)');
   cmbFonts.Items.Add('Times-Roman (衬线报刊体)');
   cmbFonts.Items.Add('Courier (等宽打字机体)');
   cmbFonts.ItemIndex := 0;
+  chkEraseSource.Caption := '擦除原始区域文本';
+//  chkAvoidOverlap.Caption := '自适应避让重叠文字';
 end;
 
 procedure TfrmMoverMain.UpdateControlsState;
@@ -627,6 +628,7 @@ begin
     Mover.FontSize := FSnapFontSize;
     Mover.EraseSource := FSnapErase;
     Mover.AvoidOverlap := FSnapAvoid;
+    Mover.LineHeight := FSnapLineHeight;
     
     SuccessCount := 0;
     for I := 0 to Length(FSnapFiles) - 1 do
@@ -718,9 +720,10 @@ begin
   FSnapDestAbsolute := rbDestAbsolute.Checked;
   FSnapFontIndex := cmbFonts.ItemIndex;
   FSnapFontSize := StrToFloatDef(edtFontSize.Text, 8.0);
+  FSnapLineHeight := StrToFloatDef(edtLineHeight.Text, 18.0);
   FSnapErase := chkEraseSource.Checked;
-  FSnapAvoid := chkAvoidOverlap.Checked;
-  
+//  FSnapAvoid := chkAvoidOverlap.Checked;
+
   if rbSmartMode.Checked then
     FSnapMode := mmSmart
   else if rbPercentMode.Checked then
@@ -765,8 +768,13 @@ begin
       LFontSize := LFontSize div 100;
     udFontSize.Position := LFontSize;
     
+    var LLineHeight := Ini.ReadInteger('Style', 'LineHeight', 18);
+    if LLineHeight >= 100 then
+      LLineHeight := LLineHeight div 100;
+    udLineHeight.Position := LLineHeight;
+    
     chkEraseSource.Checked := Ini.ReadBool('Style', 'EraseSource', True);
-    chkAvoidOverlap.Checked := Ini.ReadBool('Style', 'AvoidOverlap', False);
+//    chkAvoidOverlap.Checked := Ini.ReadBool('Style', 'AvoidOverlap', False);
     cmbFonts.ItemIndex := Ini.ReadInteger('Style', 'FontIndex', 0);
     
     var LDestMode := Ini.ReadInteger('Settings', 'DestMode', 0);
@@ -786,6 +794,7 @@ begin
   edtTx.Text := Format('%.2f', [udTx.Position / 100.0]);
   edtTy.Text := Format('%.2f', [udTy.Position / 100.0]);
   edtFontSize.Text := IntToStr(udFontSize.Position);
+  edtLineHeight.Text := IntToStr(udLineHeight.Position);
   FCurrentSrcAbsolute := rbAbsoluteMode.Checked;
   FCurrentDestAbsolute := rbDestAbsolute.Checked;
 end;
@@ -818,8 +827,10 @@ begin
     
     Ini.WriteInteger('Style', 'FontSize', udFontSize.Position);
     
+    Ini.WriteInteger('Style', 'LineHeight', udLineHeight.Position);
+    
     Ini.WriteBool('Style', 'EraseSource', chkEraseSource.Checked);
-    Ini.WriteBool('Style', 'AvoidOverlap', chkAvoidOverlap.Checked);
+//    Ini.WriteBool('Style', 'AvoidOverlap', chkAvoidOverlap.Checked);
     Ini.WriteInteger('Style', 'FontIndex', cmbFonts.ItemIndex);
     
     var LDestMode := 0;

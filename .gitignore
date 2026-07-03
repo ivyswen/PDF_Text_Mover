@@ -19,3 +19,4 @@ __history/
 # 样本数据与输出的 PDF 临时文件
 sample-files/
 *.pdf
+.vscode/settings.json

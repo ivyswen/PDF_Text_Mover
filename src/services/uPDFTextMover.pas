@@ -35,6 +35,7 @@ type
     FEraseSource: Boolean;
     FAvoidOverlap: Boolean;
     FDestUseAbsolute: Boolean;
+    FLineHeight: Single;
 
     function GetFontBaseName(Font: FPDF_FONT): string;
     function GetTextObjectString(TextObj: FPDF_PAGEOBJECT; TextPage: FPDF_TEXTPAGE): string;
@@ -55,6 +56,7 @@ type
     property EraseSource: Boolean read FEraseSource write FEraseSource;
     property AvoidOverlap: Boolean read FAvoidOverlap write FAvoidOverlap;
     property DestUseAbsolute: Boolean read FDestUseAbsolute write FDestUseAbsolute;
+    property LineHeight: Single read FLineHeight write FLineHeight;
   end;
 
 implementation
@@ -86,6 +88,7 @@ begin
   FEraseSource := True;
   FAvoidOverlap := False;
   FDestUseAbsolute := False;
+  FLineHeight := 18.0;
 end;
 
 function TPDFTextMover.GetFontBaseName(Font: FPDF_FONT): string;
@@ -322,7 +325,7 @@ begin
         Success := True;
         for I := 0 to LineTexts.Count - 1 do
         begin
-          LineY := DestYVal - (I * 18.0);
+          LineY := DestYVal - (I * FLineHeight);
 
           AnsiFontName := AnsiString(FFontName);
           if AnsiFontName = '' then AnsiFontName := 'Helvetica';
